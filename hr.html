@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الموظفين - MahWay</title>
+    <link rel="icon" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="portal.css">
+</head>
+<body class="portal-dashboard-page">
+
+    <header class="dashboard-header">
+        <div class="brand">
+            <img src="logo.png" alt="MahWay">
+            <div class="brand-text">
+                <h2>إدارة الموظفين</h2>
+                <span>MahWay - بوابة الـ HR</span>
+            </div>
+        </div>
+        <div class="dashboard-user">
+            <div class="user-badge">
+                <i class="fas fa-id-badge"></i>
+                <span id="userNameLabel">...</span>
+                <span style="color:#9ca3af;">|</span>
+                <span id="userRoleLabel">...</span>
+            </div>
+            <button class="header-btn" id="changePasswordBtn">
+                <i class="fas fa-lock"></i> تغيير كلمة المرور
+            </button>
+            <button class="logout-btn" id="logoutBtn">
+                <i class="fas fa-right-from-bracket"></i> خروج
+            </button>
+        </div>
+    </header>
+
+    <main class="dashboard-body">
+        <div class="hr-toolbar">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="ابحث بالاسم أو البريد أو التليفون...">
+            </div>
+            <button class="add-employee-btn" id="addEmployeeBtn">
+                <i class="fas fa-user-plus"></i> إضافة موظف جديد
+            </button>
+        </div>
+
+        <div class="shipments-count" id="employeesCount"></div>
+
+        <div id="loadingBlock" class="loading-block">
+            <i class="fas fa-circle-notch"></i>
+            جاري تحميل بيانات الموظفين...
+        </div>
+
+        <div class="employees-grid" id="employeesGrid" style="display:none;"></div>
+
+        <div class="empty-state" id="emptyState" style="display:none;">
+            <i class="fas fa-users-slash"></i>
+            مفيش موظفين لسه
+        </div>
+    </main>
+
+    <!-- مودال إضافة / تعديل موظف -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal-box">
+            <button class="modal-close" id="closeEmployeeModal"><i class="fas fa-xmark"></i></button>
+            <h3 id="employeeModalTitle"><i class="fas fa-user-plus"></i> إضافة موظف جديد</h3>
+            <div class="login-error" id="empError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="empErrorText"></span>
+            </div>
+            <form class="login-form" id="employeeForm">
+                <input type="hidden" id="empOriginalEmail">
+
+                <div class="field">
+                    <label>صورة الموظف</label>
+                    <div class="photo-upload-field">
+                        <img id="photoPreview" class="photo-preview" src="" style="display:none;">
+                        <div id="photoPlaceholder" class="employee-avatar-placeholder" style="width:64px;height:64px;font-size:1.1rem;">؟</div>
+                        <label for="photoInput" class="photo-upload-btn">
+                            <i class="fas fa-camera"></i> اختيار صورة
+                        </label>
+                        <input type="file" id="photoInput" accept="image/*" style="display:none;">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="empName"><i class="fas fa-user"></i> الاسم</label>
+                    <input type="text" id="empName" required>
+                </div>
+                <div class="field">
+                    <label for="empEmail"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                    <input type="email" id="empEmail" required autocomplete="off">
+                </div>
+                <div class="field">
+                    <label for="empPhone"><i class="fas fa-phone"></i> رقم التليفون</label>
+                    <input type="tel" id="empPhone">
+                </div>
+                <div class="field">
+                    <label><i class="fas fa-user-gear"></i> الأدوار والصلاحيات <span style="font-weight:400;color:var(--text-light);">(ممكن تختار أكتر من دور)</span></label>
+                    <div class="roles-checklist" id="empRolesChecklist"></div>
+                </div>
+                <div class="field">
+                    <label for="empWorkingDays"><i class="fas fa-calendar-days"></i> عدد أيام العمل بالأسبوع</label>
+                    <input type="number" id="empWorkingDays" min="0" max="7" step="1" placeholder="مثال: 6">
+                </div>
+                <div class="field">
+                    <label for="empPassword"><i class="fas fa-lock"></i> كلمة المرور <span id="passwordHint" style="font-weight:400;color:var(--text-light);"></span></label>
+                    <input type="password" id="empPassword" autocomplete="new-password" minlength="6">
+                </div>
+                <div class="field" id="activeField" style="display:none;">
+                    <label style="display:flex;align-items:center;gap:0.6rem;">
+                        <input type="checkbox" id="empActive" style="width:auto;">
+                        الحساب مفعّل
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="cancelEmployeeModal">إلغاء</button>
+                    <button type="submit" class="btn-primary" id="saveEmployeeBtn">
+                        <i class="fas fa-check"></i> حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال تغيير كلمة مرور صاحب الحساب -->
+    <div class="modal-overlay" id="changePasswordModal">
+        <div class="modal-box">
+            <button class="modal-close" id="closeChangePasswordModal"><i class="fas fa-xmark"></i></button>
+            <h3><i class="fas fa-lock"></i> تغيير كلمة المرور</h3>
+            <div class="login-error" id="cpError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="cpErrorText"></span>
+            </div>
+            <form class="login-form" id="changePasswordForm">
+                <div class="field">
+                    <label for="oldPassword">كلمة المرور الحالية</label>
+                    <input type="password" id="oldPassword" required autocomplete="current-password">
+                </div>
+                <div class="field">
+                    <label for="newPasswordCp">كلمة المرور الجديدة</label>
+                    <input type="password" id="newPasswordCp" required autocomplete="new-password" minlength="6">
+                </div>
+                <div class="field">
+                    <label for="confirmPasswordCp">تأكيد كلمة المرور الجديدة</label>
+                    <input type="password" id="confirmPasswordCp" required autocomplete="new-password" minlength="6">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="cancelChangePassword">إلغاء</button>
+                    <button type="submit" class="btn-primary" id="savePasswordBtn">
+                        <i class="fas fa-check"></i> حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastText"></span>
+    </div>
+
+    <script>
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3SBQ16fLDJkPrrbElvhR_vAPN7Pspw6REpP5kCaB2v78WMRc0RccEyXtCVxDbXgPO/exec';
+
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function postToScript(payload) {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+            return res.json();
+        }
+
+        let session = null;
+        let allEmployees = [];
+        let roleLabels = {};
+        let rolesCatalog = []; // [{id, label, icon}] - بيتحدّث تلقائي من الباك إند مهما زاد عدد الأدوار
+
+        function loadSession() {
+            const raw = localStorage.getItem('mahway_employee');
+            if (!raw) { window.location.href = 'login.html'; return null; }
+            try {
+                const parsed = JSON.parse(raw);
+                const canManageEmployees = !!(parsed.permissions && parsed.permissions.manageEmployees);
+                if (!canManageEmployees) {
+                    window.location.href = 'dashboard.html';
+                    return null;
+                }
+                return parsed;
+            } catch (e) {
+                localStorage.removeItem('mahway_employee');
+                window.location.href = 'login.html';
+                return null;
+            }
+        }
+
+        function logout() {
+            const s = session;
+            localStorage.removeItem('mahway_employee');
+            if (s && s.token) {
+                fetch(GOOGLE_SCRIPT_URL + '?action=logout&token=' + encodeURIComponent(s.token)).catch(() => {});
+            }
+            window.location.href = 'login.html';
+        }
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            toast.className = 'toast ' + (type || 'success');
+            toast.querySelector('i').className = 'fas ' + (type === 'error' ? 'fa-circle-exclamation' : 'fa-check-circle');
+            toastText.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ---------- تحميل قائمة الموظفين ----------
+        async function fetchEmployees() {
+            try {
+                const res = await fetch(GOOGLE_SCRIPT_URL + '?action=listEmployees&token=' + encodeURIComponent(session.token));
+                const data = await res.json();
+
+                if (data.result !== 'success') {
+                    if ((data.message || '').includes('الجلسة')) {
+                        localStorage.removeItem('mahway_employee');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    showToast(data.message || 'حصل خطأ في تحميل بيانات الموظفين', 'error');
+                    document.getElementById('loadingBlock').style.display = 'none';
+                    return;
+                }
+
+                allEmployees = data.employees || [];
+                roleLabels = data.roleLabels || {};
+                rolesCatalog = data.rolesCatalog || [];
+                populateRolesChecklist();
+
+                document.getElementById('loadingBlock').style.display = 'none';
+                renderEmployees();
+            } catch (err) {
+                console.error(err);
+                showToast('فشل الاتصال بالسيرفر', 'error');
+                document.getElementById('loadingBlock').style.display = 'none';
+            }
+        }
+
+        // بيبني قائمة الأدوار (checkboxes) تلقائيًا من كتالوج الأدوار اللي جاي من
+        // الباك إند، فلو اتضاف دور جديد في المستقبل هيظهر هنا من غير أي تعديل
+        // في كود الصفحة دي.
+        function populateRolesChecklist() {
+            const container = document.getElementById('empRolesChecklist');
+            container.innerHTML = '';
+            rolesCatalog.forEach(role => {
+                const id = 'role_' + role.id;
+                const wrapper = document.createElement('label');
+                wrapper.className = 'role-check-item';
+                wrapper.setAttribute('for', id);
+                wrapper.innerHTML = `
+                    <input type="checkbox" id="${id}" value="${role.id}">
+                    <i class="fas ${role.icon || 'fa-briefcase'}"></i>
+                    <span>${role.label}</span>
+                `;
+                container.appendChild(wrapper);
+            });
+        }
+
+        function getSelectedRoles() {
+            return Array.from(document.querySelectorAll('#empRolesChecklist input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+        }
+
+        function setSelectedRoles(rolesArray) {
+            const selected = new Set(rolesArray || []);
+            document.querySelectorAll('#empRolesChecklist input[type="checkbox"]').forEach(cb => {
+                cb.checked = selected.has(cb.value);
+            });
+        }
+
+        function renderEmployees() {
+            const grid = document.getElementById('employeesGrid');
+            const emptyEl = document.getElementById('emptyState');
+            const countEl = document.getElementById('employeesCount');
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            const filtered = allEmployees.filter(emp => {
+                if (!query) return true;
+                return (emp.name || '').toLowerCase().includes(query) ||
+                       (emp.email || '').toLowerCase().includes(query) ||
+                       (emp.phone || '').toLowerCase().includes(query) ||
+                       (emp.roleLabel || '').toLowerCase().includes(query);
+            });
+
+            countEl.textContent = 'إجمالي الموظفين: ' + allEmployees.length + (query ? ' (نتائج البحث: ' + filtered.length + ')' : '');
+
+            grid.innerHTML = '';
+
+            if (filtered.length === 0) {
+                grid.style.display = 'none';
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            grid.style.display = 'grid';
+            emptyEl.style.display = 'none';
+
+            filtered.forEach(emp => {
+                const card = document.createElement('div');
+                card.className = 'employee-card' + (emp.active ? '' : ' inactive');
+
+                const initial = (emp.name || '?').trim().charAt(0).toUpperCase();
+                const avatarHtml = emp.photoUrl
+                    ? `<img class="employee-avatar" src="${emp.photoUrl}" alt="${emp.name}">`
+                    : `<div class="employee-avatar-placeholder">${initial}</div>`;
+
+                // موظف بيقدر يكون ليه أكتر من دور، فكل دور بيظهر كـ badge منفصل
+                const roleBadgesHtml = (emp.roleLabels && emp.roleLabels.length)
+                    ? emp.roleLabels.map(label => `<span class="employee-role-badge">${label}</span>`).join('')
+                    : `<span class="employee-role-badge no-role">بدون دور محدد</span>`;
+
+                const workingDaysHtml = (emp.workingDays !== '' && emp.workingDays !== null && typeof emp.workingDays !== 'undefined')
+                    ? `<div class="employee-working-days"><i class="fas fa-calendar-days"></i> ${emp.workingDays} أيام عمل / أسبوع</div>`
+                    : '';
+
+                card.innerHTML = `
+                    <span class="employee-status-badge ${emp.active ? 'active' : 'inactive'}">${emp.active ? 'مفعّل' : 'موقوف'}</span>
+                    ${avatarHtml}
+                    <div class="employee-name">${emp.name || '-'}</div>
+                    <div class="employee-email">${emp.email}</div>
+                    <div class="employee-role-badges">${roleBadgesHtml}</div>
+                    <div class="employee-phone"><i class="fas fa-phone"></i> ${emp.phone || '-'}</div>
+                    ${workingDaysHtml}
+                    <div class="employee-card-actions">
+                        <button class="icon-btn edit-btn" title="تعديل"><i class="fas fa-pen"></i></button>
+                        <button class="icon-btn toggle-btn" title="${emp.active ? 'إيقاف الحساب' : 'تفعيل الحساب'}"><i class="fas ${emp.active ? 'fa-user-slash' : 'fa-user-check'}"></i></button>
+                        <button class="icon-btn danger delete-btn" title="حذف"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+
+                card.querySelector('.edit-btn').addEventListener('click', () => openEmployeeModal(emp));
+                card.querySelector('.toggle-btn').addEventListener('click', () => toggleActive(emp));
+                card.querySelector('.delete-btn').addEventListener('click', () => deleteEmployee(emp));
+
+                grid.appendChild(card);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', renderEmployees);
+
+        // ---------- مودال إضافة / تعديل موظف ----------
+        const empModal = document.getElementById('employeeModal');
+        const empForm = document.getElementById('employeeForm');
+        const empError = document.getElementById('empError');
+        const empErrorText = document.getElementById('empErrorText');
+        let currentPhotoBase64 = '';
+        let currentPhotoMimeType = '';
+        let isEditMode = false;
+
+        function resetPhotoField() {
+            currentPhotoBase64 = '';
+            currentPhotoMimeType = '';
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('photoPreview').src = '';
+            document.getElementById('photoPlaceholder').style.display = 'flex';
+        }
+
+        function openEmployeeModal(emp) {
+            empError.style.display = 'none';
+            empForm.reset();
+            resetPhotoField();
+            isEditMode = !!emp;
+
+            document.getElementById('employeeModalTitle').innerHTML = isEditMode
+                ? '<i class="fas fa-user-pen"></i> تعديل بيانات الموظف'
+                : '<i class="fas fa-user-plus"></i> إضافة موظف جديد';
+
+            document.getElementById('empPassword').required = !isEditMode;
+            document.getElementById('passwordHint').textContent = isEditMode ? '(سيبها فاضية لو مش عايز تغيّرها)' : '';
+            document.getElementById('activeField').style.display = isEditMode ? 'block' : 'none';
+
+            if (isEditMode) {
+                document.getElementById('empOriginalEmail').value = emp.email;
+                document.getElementById('empName').value = emp.name || '';
+                document.getElementById('empEmail').value = emp.email || '';
+                document.getElementById('empPhone').value = emp.phone || '';
+                document.getElementById('empWorkingDays').value = (emp.workingDays === '' || emp.workingDays === null || typeof emp.workingDays === 'undefined') ? '' : emp.workingDays;
+                setSelectedRoles(emp.roles || []);
+                document.getElementById('empActive').checked = !!emp.active;
+                if (emp.photoUrl) {
+                    document.getElementById('photoPreview').src = emp.photoUrl;
+                    document.getElementById('photoPreview').style.display = 'block';
+                    document.getElementById('photoPlaceholder').style.display = 'none';
+                }
+            } else {
+                document.getElementById('empOriginalEmail').value = '';
+                document.getElementById('empWorkingDays').value = '';
+                setSelectedRoles([]);
+            }
+
+            empModal.classList.add('show');
+        }
+
+        function closeEmployeeModal() { empModal.classList.remove('show'); }
+
+        document.getElementById('addEmployeeBtn').addEventListener('click', () => openEmployeeModal(null));
+        document.getElementById('closeEmployeeModal').addEventListener('click', closeEmployeeModal);
+        document.getElementById('cancelEmployeeModal').addEventListener('click', closeEmployeeModal);
+        empModal.addEventListener('click', (e) => { if (e.target === empModal) closeEmployeeModal(); });
+
+        document.getElementById('photoInput').addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast('الرجاء اختيار ملف صورة صحيح', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const result = e.target.result; // data:image/png;base64,....
+                currentPhotoMimeType = file.type;
+                currentPhotoBase64 = result.split(',')[1];
+                document.getElementById('photoPreview').src = result;
+                document.getElementById('photoPreview').style.display = 'block';
+                document.getElementById('photoPlaceholder').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        empForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            empError.style.display = 'none';
+
+            const name = document.getElementById('empName').value.trim();
+            const email = document.getElementById('empEmail').value.trim();
+            const phone = document.getElementById('empPhone').value.trim();
+            const workingDaysRaw = document.getElementById('empWorkingDays').value;
+            const workingDays = workingDaysRaw === '' ? '' : Number(workingDaysRaw);
+            const selectedRoles = getSelectedRoles();
+            const password = document.getElementById('empPassword').value;
+
+            if (selectedRoles.length === 0) {
+                empErrorText.textContent = 'الرجاء تحديد دور واحد على الأقل للموظف';
+                empError.style.display = 'flex';
+                return;
+            }
+
+            const btn = document.getElementById('saveEmployeeBtn');
+            btn.disabled = true;
+
+            try {
+                let payload;
+                if (isEditMode) {
+                    payload = {
+                        type: 'updateEmployee',
+                        token: session.token,
+                        targetEmail: document.getElementById('empOriginalEmail').value,
+                        newEmail: email,
+                        name: name,
+                        phone: phone,
+                        roles: selectedRoles,
+                        workingDays: workingDays,
+                        active: document.getElementById('empActive').checked
+                    };
+                    if (password) payload.newPasswordHash = await sha256(password);
+                } else {
+                    payload = {
+                        type: 'addEmployee',
+                        token: session.token,
+                        name: name,
+                        email: email,
+                        phone: phone,
+                        roles: selectedRoles,
+                        workingDays: workingDays,
+                        passwordHash: await sha256(password)
+                    };
+                }
+
+                if (currentPhotoBase64) {
+                    payload.photoBase64 = currentPhotoBase64;
+                    payload.photoMimeType = currentPhotoMimeType;
+                }
+
+                const data = await postToScript(payload);
+
+                if (data.result === 'success') {
+                    closeEmployeeModal();
+                    showToast(data.message || 'تم الحفظ بنجاح', 'success');
+                    fetchEmployees();
+                } else {
+                    empErrorText.textContent = data.message || 'حصل خطأ. حاول تاني.';
+                    empError.style.display = 'flex';
+                }
+            } catch (err) {
+                console.error(err);
+                empErrorText.textContent = 'حصل خطأ في الاتصال. تأكد من الإنترنت وحاول تاني.';
+                empError.style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        async function toggleActive(emp) {
+            try {
+                const data = await postToScript({
+                    type: 'updateEmployee',
+                    token: session.token,
+                    targetEmail: emp.email,
+                    active: !emp.active
+                });
+                if (data.result === 'success') {
+                    showToast(emp.active ? 'تم إيقاف الحساب' : 'تم تفعيل الحساب', 'success');
+                    fetchEmployees();
+                } else {
+                    showToast(data.message || 'فشل التحديث', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('فشل الاتصال بالسيرفر', 'error');
+            }
+        }
+
+        async function deleteEmployee(emp) {
+            if (!confirm('متأكد إنك عايز تحذف "' + emp.name + '"؟ الإجراء ده مينفعش يتراجع فيه.')) return;
+            try {
+                const data = await postToScript({ type: 'deleteEmployee', token: session.token, targetEmail: emp.email });
+                if (data.result === 'success') {
+                    showToast(data.message || 'تم الحذف', 'success');
+                    fetchEmployees();
+                } else {
+                    showToast(data.message || 'فشل الحذف', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('فشل الاتصال بالسيرفر', 'error');
+            }
+        }
+
+        // ---------- تغيير كلمة مرور صاحب الحساب ----------
+        const cpModal = document.getElementById('changePasswordModal');
+        const cpForm = document.getElementById('changePasswordForm');
+        const cpError = document.getElementById('cpError');
+        const cpErrorText = document.getElementById('cpErrorText');
+
+        function openChangePasswordModal() {
+            cpForm.reset();
+            cpError.style.display = 'none';
+            cpModal.classList.add('show');
+        }
+        function closeChangePasswordModal() { cpModal.classList.remove('show'); }
+
+        document.getElementById('changePasswordBtn').addEventListener('click', openChangePasswordModal);
+        document.getElementById('closeChangePasswordModal').addEventListener('click', closeChangePasswordModal);
+        document.getElementById('cancelChangePassword').addEventListener('click', closeChangePasswordModal);
+        cpModal.addEventListener('click', (e) => { if (e.target === cpModal) closeChangePasswordModal(); });
+
+        cpForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            cpError.style.display = 'none';
+
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPasswordCp').value;
+            const confirmPassword = document.getElementById('confirmPasswordCp').value;
+
+            if (newPassword !== confirmPassword) {
+                cpErrorText.textContent = 'كلمة المرور الجديدة وتأكيدها مش متطابقين';
+                cpError.style.display = 'flex';
+                return;
+            }
+            if (newPassword.length < 6) {
+                cpErrorText.textContent = 'كلمة المرور لازم تكون 6 أحرف على الأقل';
+                cpError.style.display = 'flex';
+                return;
+            }
+
+            const btn = document.getElementById('savePasswordBtn');
+            btn.disabled = true;
+
+            try {
+                const data = await postToScript({
+                    type: 'changePassword',
+                    token: session.token,
+                    oldPasswordHash: await sha256(oldPassword),
+                    newPasswordHash: await sha256(newPassword)
+                });
+
+                if (data.result === 'success') {
+                    closeChangePasswordModal();
+                    showToast(data.message || 'تم تغيير كلمة المرور بنجاح', 'success');
+                } else {
+                    cpErrorText.textContent = data.message || 'حصل خطأ. حاول تاني.';
+                    cpError.style.display = 'flex';
+                }
+            } catch (err) {
+                console.error(err);
+                cpErrorText.textContent = 'حصل خطأ في الاتصال. تأكد من الإنترنت وحاول تاني.';
+                cpError.style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        session = loadSession();
+        if (session) {
+            document.getElementById('userNameLabel').textContent = session.name;
+            document.getElementById('userRoleLabel').textContent = session.roleLabel;
+            fetchEmployees();
+        }
+    </script>
+</body>
+</html>
