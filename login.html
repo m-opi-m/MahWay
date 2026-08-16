@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دخول الموظفين - MahWay</title>
+    <link rel="icon" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="portal.css">
+</head>
+<body class="portal-login-page">
+
+    <div>
+        <div class="login-card">
+            <img src="logo.png" alt="MahWay" class="portal-logo">
+            <h1>بوابة الموظفين</h1>
+            <p class="subtitle">سجل الدخول عشان تقدر تحدّث حالة الشحنات</p>
+
+            <div class="login-error" id="loginError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="loginErrorText"></span>
+            </div>
+
+            <form class="login-form" id="loginForm">
+                <div class="field">
+                    <label for="email"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                    <input type="email" id="email" required autocomplete="username">
+                </div>
+                <div class="field">
+                    <label for="password"><i class="fas fa-lock"></i> كلمة المرور</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <i class="fas fa-right-to-bracket"></i>
+                    <span>تسجيل الدخول</span>
+                </button>
+            </form>
+            <a href="forgot-password.html" class="forgot-link"><i class="fas fa-key"></i> نسيت كلمة المرور؟</a>
+        </div>
+        <div style="text-align:center;">
+            <a href="index.html" class="back-home-link"><i class="fas fa-arrow-right"></i> رجوع للموقع الرئيسي</a>
+        </div>
+    </div>
+
+    <script>
+        // رابط Google Apps Script (نفس الرابط المستخدم في باقي الموقع)
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3SBQ16fLDJkPrrbElvhR_vAPN7Pspw6REpP5kCaB2v78WMRc0RccEyXtCVxDbXgPO/exec';
+
+        // تحويل النص لكود SHA-256 (بنبعت الهاش مش الباسورد الأصلي)
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // لو فيه جلسة شغالة بالفعل، روح على الصفحة المناسبة على طول
+        (function redirectIfLoggedIn() {
+            const raw = localStorage.getItem('mahway_employee');
+            if (!raw) return;
+            try {
+                const s = JSON.parse(raw);
+                const canManageEmployees = !!(s.permissions && s.permissions.manageEmployees);
+                window.location.href = canManageEmployees ? 'hr.html' : 'dashboard.html';
+            } catch (e) {
+                localStorage.removeItem('mahway_employee');
+            }
+        })();
+
+        const form = document.getElementById('loginForm');
+        const errorBox = document.getElementById('loginError');
+        const errorText = document.getElementById('loginErrorText');
+        const loginBtn = document.getElementById('loginBtn');
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes('PASTE_YOUR')) {
+                errorText.textContent = 'السيرفر غير مضبوط. تواصل مع الإدارة.';
+                errorBox.style.display = 'flex';
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.querySelector('span').textContent = 'جاري الدخول...';
+
+            try {
+                const passwordHash = await sha256(password);
+                const url = GOOGLE_SCRIPT_URL + '?action=login&email=' + encodeURIComponent(email) + '&passwordHash=' + encodeURIComponent(passwordHash);
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.result === 'success') {
+                    localStorage.setItem('mahway_employee', JSON.stringify({
+                        token: data.token,
+                        name: data.name,
+                        roles: data.roles || [],
+                        roleLabels: data.roleLabels || [],
+                        roleLabel: data.roleLabel,
+                        permissions: data.permissions || { allowedStatuses: [], manageEmployees: false },
+                        phone: data.phone,
+                        photoUrl: data.photoUrl || '',
+                        workingDays: data.workingDays || ''
+                    }));
+                    const canManageEmployees = !!(data.permissions && data.permissions.manageEmployees);
+                    window.location.href = canManageEmployees ? 'hr.html' : 'dashboard.html';
+                } else {
+                    errorText.textContent = data.message || 'حصل خطأ. حاول تاني.';
+                    errorBox.style.display = 'flex';
+                }
+            } catch (err) {
+                console.error(err);
+                errorText.textContent = 'حصل خطأ في الاتصال. تأكد من الإنترنت وحاول تاني.';
+                errorBox.style.display = 'flex';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.querySelector('span').textContent = 'تسجيل الدخول';
+            }
+        });
+    </script>
+</body>
+</html>
