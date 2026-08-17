@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الشحنات - MahWay</title>
+    <link rel="icon" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="portal.css">
+</head>
+<body class="portal-dashboard-page">
+
+    <header class="dashboard-header">
+        <div class="brand">
+            <img src="logo.png" alt="MahWay">
+            <div class="brand-text">
+                <h2>لوحة تحديث الشحنات</h2>
+                <span>MahWay - بوابة الموظفين</span>
+            </div>
+        </div>
+        <div class="dashboard-user">
+            <div class="user-badge">
+                <i class="fas fa-id-badge"></i>
+                <span id="userNameLabel">...</span>
+                <span style="color:#9ca3af;">|</span>
+                <span id="userRoleLabel">...</span>
+            </div>
+            <button class="header-btn notif-bell-btn" id="notifBellBtn" title="المهام الجديدة">
+                <i class="fas fa-bell"></i>
+                <span class="notif-count" id="notifCount" style="display:none;">0</span>
+            </button>
+            <button class="header-btn" id="changePasswordBtn">
+                <i class="fas fa-lock"></i> تغيير كلمة المرور
+            </button>
+            <button class="logout-btn" id="logoutBtn">
+                <i class="fas fa-right-from-bracket"></i> خروج
+            </button>
+        </div>
+    </header>
+
+    <div class="modal-overlay" id="changePasswordModal">
+        <div class="modal-box">
+            <button class="modal-close" id="closeChangePasswordModal"><i class="fas fa-xmark"></i></button>
+            <h3><i class="fas fa-lock"></i> تغيير كلمة المرور</h3>
+            <div class="login-error" id="cpError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="cpErrorText"></span>
+            </div>
+            <form class="login-form" id="changePasswordForm">
+                <div class="field">
+                    <label for="oldPassword">كلمة المرور الحالية</label>
+                    <input type="password" id="oldPassword" required autocomplete="current-password">
+                </div>
+                <div class="field">
+                    <label for="newPasswordCp">كلمة المرور الجديدة</label>
+                    <input type="password" id="newPasswordCp" required autocomplete="new-password" minlength="6">
+                </div>
+                <div class="field">
+                    <label for="confirmPasswordCp">تأكيد كلمة المرور الجديدة</label>
+                    <input type="password" id="confirmPasswordCp" required autocomplete="new-password" minlength="6">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="cancelChangePassword">إلغاء</button>
+                    <button type="submit" class="btn-primary" id="savePasswordBtn">
+                        <i class="fas fa-check"></i> حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال توليد / إدخال كود التأكيد -->
+    <div class="modal-overlay" id="codeModal">
+        <div class="modal-box">
+            <button class="modal-close" id="closeCodeModal"><i class="fas fa-xmark"></i></button>
+            <h3 id="codeModalTitle"><i class="fas fa-key"></i> كود التأكيد</h3>
+            <div class="login-error" id="codeError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="codeErrorText"></span>
+            </div>
+
+            <!-- حالة: توليد كود جديد -->
+            <div id="codeGenerateView">
+                <p class="code-modal-hint" id="codeGenerateHint">هيتولّد كود من 6 أرقام، سلّمه للطرف اللي هيستلم الشحنة عشان يدخله في حسابه.</p>
+                <button class="btn-primary" id="doGenerateCodeBtn" style="width:100%;">
+                    <i class="fas fa-rotate"></i> توليد كود
+                </button>
+            </div>
+
+            <!-- حالة: عرض الكود اللي اتولّد -->
+            <div id="codeResultView" style="display:none;">
+                <p class="code-modal-hint" id="codeResultHint"></p>
+                <div class="code-display" id="codeResultValue"></div>
+                <p class="code-modal-hint">صالح لمدة 48 ساعة. لو الطرف التاني ضيّعه، تقدر تولّد كود جديد يلغي القديم.</p>
+                <button class="btn-secondary" id="regenerateCodeBtn" style="width:100%;">
+                    <i class="fas fa-rotate"></i> توليد كود جديد
+                </button>
+            </div>
+
+            <!-- حالة: إدخال كود لتأكيد الاستلام -->
+            <form id="codeConfirmView" style="display:none;">
+                <div class="field">
+                    <label for="confirmCodeInput">أدخل الكود اللي استلمته</label>
+                    <input type="text" id="confirmCodeInput" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary" id="doConfirmCodeBtn">
+                        <i class="fas fa-check"></i> تأكيد الاستلام
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <main class="dashboard-body">
+        <div class="dashboard-tabs">
+            <button class="tab-btn active" id="tabActiveBtn" data-tab="active">
+                <i class="fas fa-truck-fast"></i> الشحنات النشطة <span class="tab-count" id="tabActiveCount">0</span>
+            </button>
+            <button class="tab-btn" id="tabPendingBtn" data-tab="pending">
+                <i class="fas fa-hourglass-half"></i> منتظرة الاستلام <span class="tab-count" id="tabPendingCount">0</span>
+            </button>
+            <button class="tab-btn" id="tabArchiveBtn" data-tab="archive">
+                <i class="fas fa-box-archive"></i> الأرشيف <span class="tab-count" id="tabArchiveCount">0</span>
+            </button>
+            <button class="tab-btn" id="tabWarehouseBtn" data-tab="warehouse" style="display:none;">
+                <i class="fas fa-warehouse"></i> المخزن <span class="tab-count" id="tabWarehouseCount">0</span>
+            </button>
+        </div>
+
+        <div class="dashboard-toolbar">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="ابحث بكود التتبع أو اسم العميل...">
+            </div>
+            <button class="refresh-btn" id="refreshBtn">
+                <i class="fas fa-rotate"></i> تحديث
+            </button>
+        </div>
+
+        <div class="shipments-count" id="shipmentsCount"></div>
+        <button class="hidden-toggle-link" id="hiddenToggleBtn" style="display:none;"></button>
+
+        <div id="loadingBlock" class="loading-block">
+            <i class="fas fa-circle-notch"></i>
+            جاري تحميل الشحنات...
+        </div>
+
+        <div class="shipments-list" id="shipmentsList" style="display:none;"></div>
+
+        <div class="empty-state" id="emptyState" style="display:none;">
+            <i class="fas fa-box-open"></i>
+            مفيش شحنات تظهر هنا
+        </div>
+    </main>
+
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastText"></span>
+    </div>
+
+    <script>
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3SBQ16fLDJkPrrbElvhR_vAPN7Pspw6REpP5kCaB2v78WMRc0RccEyXtCVxDbXgPO/exec';
+
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        const STATUS_ICONS = {
+            received: 'fa-file-circle-check',
+            picked_up: 'fa-hand-holding',
+            in_warehouse: 'fa-warehouse',
+            to_distribution_point: 'fa-route',
+            in_distribution_center: 'fa-building-circle-check',
+            with_distributor: 'fa-user-tag',
+            delivered: 'fa-circle-check'
+        };
+
+        let session = null;
+        let activeCodeTrackingCode = null;
+        let activeCodeMode = null; // 'generate' | 'confirm'
+        let activeCodeDirectDelivery = false; // true لو الكود ده لـ"توصيل مباشر للعميل" (تخطي نقطة التوزيع)
+        let allShipments = [];
+        let allowedStatuses = [];
+        let statusLabels = {};
+        let activeTab = 'active'; // 'active' | 'pending' | 'archive' | 'warehouse'
+        let showHiddenOnly = false;
+        let cardElapsedTimers = []; // عدادات "من وقت الاستلام" الشغالة حاليًا على الكروت الظاهرة
+
+        // ---------- تخزين محلي خاص بالموظف ده بس (كود اللي ولّده / شحنات مخفية عنده / إجراءات شافها) ----------
+        // ملحوظة: التخزين ده على متصفح الموظف نفسه بس، مش على السيرفر - يعني
+        // لو دخل من جهاز تاني مش هيلاقي نفس الكودات المتذكرة أو المخفيات
+        function storagePrefix() {
+            return 'mahway_' + (session && session.name ? session.name.toString().trim().toLowerCase() : 'guest') + '_';
+        }
+        function readLocalMap(key) {
+            try { return JSON.parse(localStorage.getItem(storagePrefix() + key) || '{}'); } catch (e) { return {}; }
+        }
+        function writeLocalMap(key, obj) {
+            localStorage.setItem(storagePrefix() + key, JSON.stringify(obj));
+        }
+        function readLocalList(key) {
+            try { return JSON.parse(localStorage.getItem(storagePrefix() + key) || '[]'); } catch (e) { return []; }
+        }
+        function writeLocalList(key, arr) {
+            localStorage.setItem(storagePrefix() + key, JSON.stringify(arr));
+        }
+
+        // كود التسليم اللي ولّده الموظف ده بنفسه لشحنة معيّنة (مش متخزن على السيرفر
+        // نفسه غير كـ hash عشان الأمان، فبنفتكره هنا عشان نعرضه على الكارت)
+        function getMyGeneratedCode(trackingCode) { return readLocalMap('pending_codes')[trackingCode] || null; }
+        function setMyGeneratedCode(trackingCode, info) {
+            const map = readLocalMap('pending_codes');
+            map[trackingCode] = info;
+            writeLocalMap('pending_codes', map);
+        }
+        function clearMyGeneratedCode(trackingCode) {
+            const map = readLocalMap('pending_codes');
+            if (map[trackingCode]) { delete map[trackingCode]; writeLocalMap('pending_codes', map); }
+        }
+
+        // شحنات "محذوفة" من عند الموظف ده بس - مش بتتلمس في الشيت ولا بتأثر على زمايله
+        function getHiddenList() { return readLocalList('hidden_shipments'); }
+        function hideShipmentLocally(trackingCode) {
+            const list = getHiddenList();
+            if (!list.includes(trackingCode)) { list.push(trackingCode); writeLocalList('hidden_shipments', list); }
+        }
+        function unhideShipmentLocally(trackingCode) {
+            writeLocalList('hidden_shipments', getHiddenList().filter(c => c !== trackingCode));
+        }
+
+        // شحنات "شافها" الموظف بالفعل عشان مانضلش نعرضلها شارة "جديد" كل شوية
+        function getSeenActions() { return readLocalMap('seen_actions'); }
+        function markActionSeen(trackingCode, status) {
+            const map = getSeenActions();
+            map[trackingCode + '::' + status] = true;
+            writeLocalMap('seen_actions', map);
+        }
+        function isActionSeen(trackingCode, status) { return !!getSeenActions()[trackingCode + '::' + status]; }
+
+        function loadSession() {
+            const raw = localStorage.getItem('mahway_employee');
+            if (!raw) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed.permissions && parsed.permissions.manageEmployees) {
+                    window.location.href = 'hr.html';
+                    return null;
+                }
+                return parsed;
+            } catch (e) {
+                localStorage.removeItem('mahway_employee');
+                window.location.href = 'login.html';
+                return null;
+            }
+        }
+
+        function logout() {
+            const s = session;
+            localStorage.removeItem('mahway_employee');
+            if (s && s.token) {
+                fetch(GOOGLE_SCRIPT_URL + '?action=logout&token=' + encodeURIComponent(s.token)).catch(() => {});
+            }
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            toast.className = 'toast ' + (type || 'success');
+            toast.querySelector('i').className = 'fas ' + (type === 'error' ? 'fa-circle-exclamation' : 'fa-check-circle');
+            toastText.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        async function fetchShipments(showSpinner) {
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (showSpinner) refreshBtn.classList.add('spinning');
+
+            try {
+                const res = await fetch(GOOGLE_SCRIPT_URL + '?action=getShipments&token=' + encodeURIComponent(session.token));
+                const data = await res.json();
+
+                if (data.result !== 'success') {
+                    if ((data.message || '').includes('الجلسة')) {
+                        localStorage.removeItem('mahway_employee');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    showToast(data.message || 'حصل خطأ في تحميل الشحنات', 'error');
+                    return;
+                }
+
+                allShipments = data.shipments || [];
+                allowedStatuses = data.allowedStatuses || [];
+                statusLabels = data.statusLabels || {};
+
+                // لو السيرفر بيقول إن الكود بقى مش معلّق (اتأكد أو انتهت صلاحيته)، امسح
+                // النسخة المحفوظة عندنا محليًا عشان الكارت ميفضلش عارض كود قديم غلط
+                allShipments.forEach(s => {
+                    if (!s.pendingActive && getMyGeneratedCode(s.trackingCode)) {
+                        clearMyGeneratedCode(s.trackingCode);
+                    }
+                });
+
+                document.getElementById('userNameLabel').textContent = data.name || session.name;
+                document.getElementById('userRoleLabel').textContent = data.roleLabel || session.roleLabel;
+
+                document.getElementById('loadingBlock').style.display = 'none';
+                renderShipments();
+            } catch (err) {
+                console.error(err);
+                showToast('فشل الاتصال بالسيرفر', 'error');
+                document.getElementById('loadingBlock').style.display = 'none';
+            } finally {
+                if (showSpinner) refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        // الشحنة تبقى "نشطة" عند الموظف ده طول ما هي فعلاً في حيازة دوره
+        // دلوقتي (يقدر يبعتها للمرحلة الجاية أو لسه ماسكها). أي شحنة "تم
+        // التسليم" نهائيًا بتتحط في الأرشيف على طول. غير كده، أي شحنة خرجت
+        // بره مسؤوليته (زي شحنة وصلت المخزن عند مندوب الشحن) بتتنقل تلقائيًا
+        // للأرشيف عنده لحد ما يرجعلها دور تاني (هترجع تظهر "نشطة" وقتها لوحدها)
+        function isActiveForMe(s) {
+            if (s.status === 'delivered') return false;
+            // "تم استلام الطلب" لسه معناها إن حد (المندوب) ما استلمهاش فعليًا من
+            // العميل - فمش المفروض تتحسب "نشطة" لحد ما يتأكد الاستلام فعلاً
+            // ويتحول لـ"تم استلام الشحنة من العميل" (انظر isPendingReceiptForMe)
+            if (s.status === 'received') return false;
+            return !!s.ownedByMe && !s.canConfirmPending;
+        }
+
+        // شحنات "منتظرة الاستلام": بتضم حالتين -
+        //  1) شحنة لسه في حيازة الطرف اللي قبلي وباعتلي كود، وعليّا إني أدخل
+        //     الكود وأأكد الاستلام عشان تتحول لعندي (canConfirmPending)
+        //  2) طلب لسه "تم استلام الطلب" بس بمعنى إنه اتسجل في النظام فقط -
+        //     محدش استلمه فعليًا من العميل لسه. دي بتفضل عند كل مناديب الشحن
+        //     (بركة مشتركة) لحد ما مندوب يولّد كود ويبدأ ياخدها، وقتها بتختفي
+        //     من عند الباقي وتفضل عند اللي هياخدها بس (انظر الباك إند)
+        // أول ما يتأكد الاستلام، الشحنة بتتحول تلقائيًا لتبويب "الشحنات النشطة"
+        function isPendingReceiptForMe(s) {
+            if (s.status === 'delivered') return false;
+            if (s.canConfirmPending) return true;
+            if (s.status === 'received' && s.ownedByMe) return true;
+            return false;
+        }
+
+        // شحنات "المخزن": وصلت المخزن فعلاً وموظف المخازن ولّدلها كود تسليم،
+        // ولسه مستنية مندوب الشحن يدخل الكود ويستلمها منه
+        function isWarehouseHandoffForMe(s) {
+            return s.status === 'in_warehouse' && !!s.canConfirmPending;
+        }
+
+        function updateTabsAndNotif() {
+            const hidden = getHiddenList();
+            const visible = allShipments.filter(s => !hidden.includes(s.trackingCode));
+            const activeCount = visible.filter(isActiveForMe).length;
+            const pendingReceiptCount = visible.filter(isPendingReceiptForMe).length;
+            const archiveCount = visible.filter(s => !isActiveForMe(s) && !isPendingReceiptForMe(s)).length;
+            document.getElementById('tabActiveCount').textContent = activeCount;
+            document.getElementById('tabPendingCount').textContent = pendingReceiptCount;
+            document.getElementById('tabArchiveCount').textContent = archiveCount;
+
+            const warehouseTabBtn = document.getElementById('tabWarehouseBtn');
+            if (warehouseTabBtn && warehouseTabBtn.style.display !== 'none') {
+                document.getElementById('tabWarehouseCount').textContent = visible.filter(isWarehouseHandoffForMe).length;
+            }
+
+            const hiddenBtn = document.getElementById('hiddenToggleBtn');
+            if (hidden.length > 0) {
+                hiddenBtn.style.display = 'inline-flex';
+                hiddenBtn.innerHTML = showHiddenOnly
+                    ? '<i class="fas fa-arrow-right"></i> رجوع للشحنات العادية'
+                    : '<i class="fas fa-trash-can"></i> عرض الشحنات المحذوفة عندك (' + hidden.length + ')';
+            } else {
+                hiddenBtn.style.display = 'none';
+                showHiddenOnly = false;
+            }
+
+            // عدد المهام اللي محتاجة إجراء منك ولسه ما شفتهاش (جرس الإشعارات)
+            const newActionsCount = visible.filter(s =>
+                (s.canGenerateNext || s.canConfirmPending) && !isActionSeen(s.trackingCode, s.status)
+            ).length;
+            const notifCountEl = document.getElementById('notifCount');
+            if (newActionsCount > 0) {
+                notifCountEl.textContent = newActionsCount;
+                notifCountEl.style.display = 'inline-flex';
+            } else {
+                notifCountEl.style.display = 'none';
+            }
+        }
+
+        function renderShipments() {
+            const listEl = document.getElementById('shipmentsList');
+            const emptyEl = document.getElementById('emptyState');
+            const countEl = document.getElementById('shipmentsCount');
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            const hidden = getHiddenList();
+
+            updateTabsAndNotif();
+
+            cardElapsedTimers.forEach(id => clearInterval(id));
+            cardElapsedTimers = [];
+
+            let base;
+            if (showHiddenOnly) {
+                base = allShipments.filter(s => hidden.includes(s.trackingCode));
+            } else {
+                base = allShipments.filter(s => !hidden.includes(s.trackingCode));
+                if (activeTab === 'warehouse') {
+                    base = base.filter(isWarehouseHandoffForMe);
+                    // مرتّبة حسب المحافظة عشان مندوب الشحن يقدر يجمع شحنات نفس
+                    // المنطقة مع بعض، والمحلية (نفس محافظة المخزن) هتظهر بلون مميز
+                    base = base.slice().sort((a, b) => (a.governorate || '').localeCompare((b.governorate || ''), 'ar'));
+                } else if (activeTab === 'pending') {
+                    base = base.filter(isPendingReceiptForMe);
+                } else {
+                    base = base.filter(s => activeTab === 'archive' ? (!isActiveForMe(s) && !isPendingReceiptForMe(s)) : isActiveForMe(s));
+                }
+            }
+
+            const filtered = base.filter(s => {
+                if (!query) return true;
+                return (s.trackingCode || '').toLowerCase().includes(query) ||
+                       (s.customerName || '').toLowerCase().includes(query) ||
+                       (s.customerPhone || '').toLowerCase().includes(query);
+            });
+
+            const scopeLabel = showHiddenOnly ? 'الشحنات المحذوفة عندك'
+                : (activeTab === 'archive' ? 'شحنات الأرشيف'
+                : (activeTab === 'warehouse' ? 'إشعارات المخزن'
+                : (activeTab === 'pending' ? 'شحنات منتظرة الاستلام'
+                : 'الشحنات النشطة')));
+            countEl.textContent = scopeLabel + ': ' + base.length + (query ? ' (نتائج البحث: ' + filtered.length + ')' : '');
+
+            listEl.innerHTML = '';
+
+            if (filtered.length === 0) {
+                listEl.style.display = 'none';
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            listEl.style.display = 'flex';
+            emptyEl.style.display = 'none';
+
+            // مندوب الشحن ("receiver") هو الوحيد اللي بيقابل العميل وجهًا لوجه، فمش المفروض
+            // يبقى عنده أي علم بكود التتبع الأصلي بتاع الشحنة - المعرّف اللي بيشتغل بيه
+            // هو اسم العميل، وأي كود بيدّيه فعليًا للعميل بيبقى الكود المؤقت اللي هو نفسه ولّده
+            const isReceiverRole = (session.roles || []).includes('receiver');
+            // موظف المخازن مش بيستلم من حد وقت ما يضغط الزرار ده - هو بيكون
+            // خلّص فحص وتجهيز الشحنة قبل ما يبعتها لنقطة التوزيع، فالنص ده
+            // أدق من "موافقة على الاستلام" في حسابه بالذات
+            const isWarehouseRole = (session.roles || []).includes('warehouse');
+
+            filtered.forEach(shipment => {
+                const card = document.createElement('div');
+                card.className = 'shipment-card status-' + shipment.status +
+                    (activeTab === 'warehouse' && shipment.isLocalToWarehouse ? ' shipment-card-local' : '');
+
+                const lastUpdateText = shipment.lastUpdate ? new Date(shipment.lastUpdate).toLocaleString('ar-EG') : '-';
+
+                let pendingNote = '';
+                if (shipment.pendingActive) {
+                    if (shipment.pendingWaitingForCustomer) {
+                        pendingNote = '<span class="status-meta pending-note"><i class="fas fa-hourglass-half"></i> في انتظار العميل يدخل كود التسليم</span>';
+                    } else {
+                        pendingNote = '<span class="status-meta pending-note"><i class="fas fa-hourglass-half"></i> في انتظار تأكيد الاستلام من: ' + (shipment.pendingToStatusLabel || '') + '</span>';
+                    }
+                }
+
+                // خانة واضحة فوق الكارت توضّح مكان الشحنة الحالي، ولو فيه إجراء
+                // مطلوب من الموظف ده، بتوضّح هيرسل (يولّد كود) ولا هيستلم (يدخل كود)
+                const isNewAction = (shipment.canGenerateNext || shipment.canConfirmPending) && !isActionSeen(shipment.trackingCode, shipment.status);
+                let actionBadge = '';
+                if (shipment.canGenerateNext) {
+                    actionBadge = '<span class="action-badge action-badge-send">' + (isNewAction ? '<span class="new-dot"></span>' : '') + '<i class="fas fa-paper-plane"></i> دورك دلوقتي: هترسل الشحنة - هتولّد كود وتدّيه للطرف اللي هيستلمها</span>';
+                } else if (shipment.canConfirmPending) {
+                    actionBadge = '<span class="action-badge action-badge-receive">' + (isNewAction ? '<span class="new-dot"></span>' : '') + '<i class="fas fa-hand-holding"></i> دورك دلوقتي: هتستلم الشحنة - خد الكود من اللي معاه وادخله تحت</span>';
+                }
+
+                // لو انت نفسك اللي ولّدت كود للمرحلة الجاية ولسه معلّق، اعرضه هنا
+                // كبطاقة واضحة فوق الكارت - عشان تديه فيزيائيًا للطرف التاني، مش
+                // عشان تدخله انت تاني (ده بيمنع اللبس إن المندوب يفتح "استلام" بالغلط)
+                // الأولوية للكود اللي السيرفر رجّعه (myPendingCode) - ده بيشتغل حتى لو
+                // الموظف بدّل جهاز/متصفح، لأنه مش معتمد على تخزين محلي بس زي الأول.
+                // لو مش موجود من السيرفر لأي سبب، نرجع للنسخة المحفوظة محليًا كبديل.
+                let myCode = null;
+                if (shipment.myPendingCode) {
+                    myCode = {
+                        code: shipment.myPendingCode,
+                        nextStatus: shipment.pendingToStatus,
+                        nextStatusLabel: shipment.pendingToStatusLabel,
+                        forCustomer: !!shipment.pendingWaitingForCustomer
+                    };
+                    setMyGeneratedCode(shipment.trackingCode, myCode);
+                } else {
+                    myCode = getMyGeneratedCode(shipment.trackingCode);
+                }
+                let myCodeBox = '';
+                if (myCode && shipment.pendingActive) {
+                    const forWhom = shipment.pendingWaitingForCustomer ? 'العميل (للتتبع بس)' : (shipment.pendingToStatusLabel || 'الطرف الجاي');
+                    myCodeBox = `
+                        <div class="my-code-box${isReceiverRole ? ' my-code-box-inline' : ''}">
+                            <div class="my-code-box-label"><i class="fas fa-key"></i> الكود اللي ولّدته - ادّيه لـ${forWhom}</div>
+                            <div class="my-code-box-value">${myCode.code}</div>
+                        </div>`;
+                }
+
+                // كود التتبع الأصلي سري وخاص بالعميل بس - مفيش أي دور موظف (مخازن/مندوب/مركز
+                // توزيع...) يفترض يشوفه. المعرّف اللي بيتعرض لكل الأدوار هو اسم العميل، وأي
+                // كود بيدّيه الموظف فعليًا للطرف التاني بيبقى الكود المؤقت اللي هو نفسه ولّده.
+                const identityHeaderHtml = `
+                    <div class="shipment-id-row">
+                        <div class="shipment-customer-name"><i class="fas fa-user"></i> ${shipment.customerName || '-'}</div>
+                        <span class="status-pill status-${shipment.status}"><i class="fas ${STATUS_ICONS[shipment.status] || 'fa-circle'}"></i> ${shipment.statusLabel}</span>
+                    </div>`;
+
+                // بوكس واضح بيوضّح مين حائز الشحنة فعليًا دلوقتي (اسمه + رقم
+                // هاتفه لو موظف، أو هاتف العميل لو كان هو نفسه المستلم/المسلّم)،
+                // وعداد وقت شغال بيعدّ من لحظة استلامه ليها لحد دلوقتي. اسم
+                // "شحنة قبل ما تتحول لمرحلة تالية" بيبقى فاضي أول ما تتسجل،
+                // فبنعرض وقتها إنها لسه محدش استلمها والعداد بيبقى من وقت الإنشاء
+                // اسم الحائز الحالي بيتخزّن من السيرفر ومعاه هاتفه بشكل صريح دلوقتي
+                // (عمود مخصص "هاتف آخر تحديث")، فمفيش حاجة نستنتجها هنا - بس بنشيل
+                // الجزء التوضيحي "(تأكيد العميل)" من الاسم الظاهر ونعرضه كوسم/شارة لطيفة
+                const rawHolderName = (shipment.updatedBy || '').toString();
+                const holderIsCustomer = rawHolderName.includes('(تأكيد العميل)');
+                const holderName = rawHolderName.replace(/\s*\(تأكيد العميل\)\s*$/, '');
+                const holderPhone = (shipment.updatedByPhone || '').toString();
+                const holderTimerId = 'holderTimer_' + shipment.trackingCode.toString().replace(/[^a-zA-Z0-9]/g, '');
+                const holderBoxHtml = `
+                    <div class="holder-box">
+                        <div class="holder-box-top">
+                            <span class="holder-box-label"><i class="fas ${holderName ? 'fa-user-tag' : 'fa-circle-question'}"></i> ${holderName ? 'الشحنة حاليًا مع' : 'لسه محدش استلمها'}</span>
+                            ${holderIsCustomer ? '<span class="holder-role-tag holder-role-customer">العميل</span>' : (holderName ? '<span class="holder-role-tag holder-role-staff">فريق العمل</span>' : '')}
+                        </div>
+                        ${holderName ? `
+                        <div class="holder-box-who">
+                            <span class="holder-box-name">${holderName}</span>
+                            ${holderPhone ? '<a class="holder-box-phone" href="tel:' + holderPhone + '"><i class="fas fa-phone"></i> ' + holderPhone + '</a>' : ''}
+                        </div>` : '<div class="holder-box-who holder-box-empty">-</div>'}
+                        <div class="holder-box-bottom">
+                            <span class="holder-box-label"><i class="fas fa-stopwatch"></i> ${holderName ? 'من وقت الاستلام' : 'من وقت إنشاء الطلب'}</span>
+                            <span class="holder-timer" id="${holderTimerId}">
+                                <span class="holder-timer-dot"></span><span class="holder-timer-digits">${renderElapsedDigits(shipment.lastUpdate)}</span>
+                            </span>
+                        </div>
+                    </div>`;
+
+                const metaHtml = `
+                    <div class="shipment-meta-row">
+                        <span class="status-meta"><i class="fas fa-clock-rotate-left"></i> آخر تحديث: ${lastUpdateText}</span>
+                        ${shipment.distributorPhone ? '<span class="status-meta"><i class="fas fa-phone-volume"></i> تليفون الموزع: ' + shipment.distributorPhone + '</span>' : ''}
+                        ${(activeTab === 'warehouse' && shipment.governorate) ? '<span class="status-meta"><i class="fas fa-location-dot"></i> المحافظة: ' + shipment.governorate + (shipment.isLocalToWarehouse ? ' <span class="local-badge"><i class="fas fa-bolt"></i> محلية - في يد الموزع مباشرة</span>' : '') + '</span>' : ''}
+                    </div>
+                    ${pendingNote ? '<div class="shipment-meta-row">' + pendingNote + '</div>' : ''}
+                    ${actionBadge ? '<div class="shipment-meta-row">' + actionBadge + '</div>' : ''}`;
+
+                card.innerHTML = `
+                    <button class="card-trash-btn" title="${showHiddenOnly ? 'استرجاع' : 'حذف من عندي بس'}">
+                        <i class="fas ${showHiddenOnly ? 'fa-rotate-left' : 'fa-trash-can'}"></i>
+                    </button>
+                    <div class="shipment-card-body">
+                        ${identityHeaderHtml}
+                        ${myCodeBox}
+                        <div class="shipment-phone"><i class="fas fa-phone"></i> هاتف العميل: <a href="tel:${shipment.customerPhone || ''}">${shipment.customerPhone || '-'}</a></div>
+                        ${holderBoxHtml}
+                        ${metaHtml}
+                        <div class="shipment-actions"></div>
+                    </div>
+                `;
+
+                if (shipment.lastUpdate) {
+                    const timerInterval = setInterval(() => {
+                        const el = document.getElementById(holderTimerId);
+                        if (!el) { clearInterval(timerInterval); return; }
+                        updateHolderTimerEl(holderTimerId, shipment.lastUpdate);
+                    }, 1000);
+                    cardElapsedTimers.push(timerInterval);
+                }
+
+                card.querySelector('.card-trash-btn').addEventListener('click', () => {
+                    if (showHiddenOnly) {
+                        unhideShipmentLocally(shipment.trackingCode);
+                        showToast('رجّعت الشحنة تاني', 'success');
+                    } else {
+                        hideShipmentLocally(shipment.trackingCode);
+                        showToast('اتحذفت من عندك بس - لسه ظاهرة عند باقي الزمايل', 'success');
+                    }
+                    renderShipments();
+                });
+
+                const actionsEl = card.querySelector('.shipment-actions');
+
+                // زرار توليد كود تسليم للمرحلة الجاية (لو الموظف ده حائز الشحنة حاليًا) = إرسال
+                if (shipment.canGenerateNext) {
+                    const genBtn = document.createElement('button');
+                    genBtn.className = 'action-btn';
+                    genBtn.innerHTML = `<i class="fas fa-check"></i> ${isWarehouseRole ? 'تم الفحص والتجهيز' : 'موافقة على الاستلام'} - توليد كود (${shipment.nextStatusLabel})`;
+                    genBtn.addEventListener('click', () => { markActionSeen(shipment.trackingCode, shipment.status); openCodeModal(shipment.trackingCode, 'generate', shipment); });
+                    actionsEl.appendChild(genBtn);
+                }
+
+                // زرار "توصيل مباشر للعميل": بديل للزرار العادي فوق - بيظهر جنبه بس
+                // في مرحلة "في الطريق لنقطة التوزيع"، لو المندوب قرر يوصّل الشحنة
+                // بنفسه من غير ما يعديها على نقطة التوزيع. بيولّد كود لـ"في يد
+                // الموزع" على طول (يتخطى مرحلة نقطة التوزيع بالكامل)
+                if (shipment.canDirectDeliver) {
+                    const directBtn = document.createElement('button');
+                    directBtn.className = 'action-btn action-btn-direct';
+                    directBtn.innerHTML = `<i class="fas fa-motorcycle"></i> توصيل مباشر للعميل - توليد كود (${shipment.directDeliverLabel})`;
+                    directBtn.addEventListener('click', () => { markActionSeen(shipment.trackingCode, shipment.status); openCodeModal(shipment.trackingCode, 'generate', shipment, true); });
+                    actionsEl.appendChild(directBtn);
+                }
+
+                // زرار إدخال كود لتأكيد استلام الشحنة (لو الموظف ده مسؤول عن المرحلة الجاية) = استلام
+                if (shipment.canConfirmPending) {
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = 'action-btn action-btn-confirm';
+                    confirmBtn.innerHTML = `<i class="fas fa-hand-holding"></i> استلام - عندي كود، تأكيد الاستلام`;
+                    confirmBtn.addEventListener('click', () => { markActionSeen(shipment.trackingCode, shipment.status); openCodeModal(shipment.trackingCode, 'confirm', shipment); });
+                    actionsEl.appendChild(confirmBtn);
+                }
+
+                // زرار طباعة بوليصة الشحن: بيظهر مكان زرار "توليد كود" بعد ما يتولّد
+                // الكود فعلاً (يعني أنا اللي ولّدته ولسه معلّق) - عشان أطبع البوليصتين
+                // وألزّقهم على الشحنة قبل ما أسلّمها للطرف التاني
+                if (myCode && shipment.pendingActive) {
+                    const printBtn = document.createElement('button');
+                    printBtn.className = 'action-btn action-btn-print';
+                    printBtn.innerHTML = `<i class="fas fa-print"></i> طباعة بوليصة الشحن`;
+                    printBtn.addEventListener('click', () => openPrintWaybill(shipment));
+                    actionsEl.appendChild(printBtn);
+                }
+
+                listEl.appendChild(card);
+            });
+        }
+
+        const allTabButtons = ['tabActiveBtn', 'tabPendingBtn', 'tabArchiveBtn', 'tabWarehouseBtn'];
+        function activateTab(tab, btnId) {
+            activeTab = tab;
+            showHiddenOnly = false;
+            allTabButtons.forEach(id => document.getElementById(id).classList.toggle('active', id === btnId));
+            renderShipments();
+        }
+        document.getElementById('tabActiveBtn').addEventListener('click', () => activateTab('active', 'tabActiveBtn'));
+        document.getElementById('tabPendingBtn').addEventListener('click', () => activateTab('pending', 'tabPendingBtn'));
+        document.getElementById('tabArchiveBtn').addEventListener('click', () => activateTab('archive', 'tabArchiveBtn'));
+        document.getElementById('tabWarehouseBtn').addEventListener('click', () => activateTab('warehouse', 'tabWarehouseBtn'));
+        document.getElementById('hiddenToggleBtn').addEventListener('click', () => {
+            showHiddenOnly = !showHiddenOnly;
+            renderShipments();
+        });
+        document.getElementById('notifBellBtn').addEventListener('click', () => {
+            // يوديه على تبويب "منتظرة الاستلام" عشان يشوف المهام اللي محتاجة إجراء منه
+            activateTab('pending', 'tabPendingBtn');
+        });
+
+        // ---------- توليد / تأكيد كود التسليم-الاستلام ----------
+        const codeModal = document.getElementById('codeModal');
+        const codeModalTitle = document.getElementById('codeModalTitle');
+        const codeError = document.getElementById('codeError');
+        const codeErrorText = document.getElementById('codeErrorText');
+        const codeGenerateView = document.getElementById('codeGenerateView');
+        const codeResultView = document.getElementById('codeResultView');
+        const codeConfirmView = document.getElementById('codeConfirmView');
+
+        function openCodeModal(trackingCode, mode, shipment, directDelivery) {
+            activeCodeTrackingCode = trackingCode;
+            activeCodeMode = mode;
+            activeCodeDirectDelivery = !!directDelivery;
+            codeError.style.display = 'none';
+            codeGenerateView.style.display = 'none';
+            codeResultView.style.display = 'none';
+            codeConfirmView.style.display = 'none';
+
+            // كود التتبع الأصلي سري وخاص بالعميل بس - مبيتعرضش لأي موظف حتى في
+            // عنوان المودال، اسم العميل بدل منه دايمًا
+            const modalIdentity = (shipment && shipment.customerName) ? shipment.customerName : '';
+
+            if (mode === 'generate') {
+                codeModalTitle.innerHTML = (activeCodeDirectDelivery
+                    ? '<i class="fas fa-motorcycle"></i> توليد كود توصيل مباشر'
+                    : '<i class="fas fa-key"></i> توليد كود تسليم') + (modalIdentity ? ' - ' + modalIdentity : '');
+                document.getElementById('codeGenerateHint').textContent = activeCodeDirectDelivery
+                    ? 'هيتولّد كود من 6 أرقام - هتوصّل الشحنة للعميل بنفسك من غير ما تعديها على نقطة التوزيع، وتسلّمه الكود ده عشان يدخله ويأكد استلامه منك.'
+                    : 'هيتولّد كود من 6 أرقام، سلّمه للطرف اللي هيستلم الشحنة عشان يدخله في حسابه.';
+                codeGenerateView.style.display = 'block';
+            } else {
+                codeModalTitle.innerHTML = '<i class="fas fa-key"></i> تأكيد استلام' + (modalIdentity ? ' - ' + modalIdentity : '');
+                document.getElementById('confirmCodeInput').value = '';
+                codeConfirmView.style.display = 'block';
+            }
+            codeModal.classList.add('show');
+        }
+
+        document.getElementById('closeCodeModal').addEventListener('click', () => codeModal.classList.remove('show'));
+        codeModal.addEventListener('click', (e) => { if (e.target === codeModal) codeModal.classList.remove('show'); });
+
+        async function doGenerateCode() {
+            const btn = document.getElementById('doGenerateCodeBtn') || document.getElementById('regenerateCodeBtn');
+            codeError.style.display = 'none';
+            document.querySelectorAll('#codeGenerateView button, #codeResultView button').forEach(b => b.disabled = true);
+
+            try {
+                const res = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        type: 'generateHandoffCode',
+                        token: session.token,
+                        trackingCode: activeCodeTrackingCode,
+                        directToDistributor: activeCodeDirectDelivery
+                    })
+                });
+                const data = await res.json();
+
+                if (data.result === 'success') {
+                    codeGenerateView.style.display = 'none';
+                    codeResultView.style.display = 'block';
+                    document.getElementById('codeResultValue').textContent = data.code;
+                    const stageLabel = data.directDelivery ? 'التوصيل المباشر - في يد الموزع' : data.nextStatusLabel;
+                    document.getElementById('codeResultHint').textContent = data.message + ' - المرحلة الجاية: ' + stageLabel;
+                    setMyGeneratedCode(activeCodeTrackingCode, {
+                        code: data.code,
+                        nextStatus: data.nextStatus,
+                        nextStatusLabel: data.nextStatusLabel,
+                        forCustomer: !!data.forCustomer,
+                        expiresAt: data.expiresAt
+                    });
+                    fetchShipments(false);
+                } else {
+                    codeErrorText.textContent = data.message || 'فشل توليد الكود';
+                    codeError.style.display = 'flex';
+                }
+            } catch (err) {
+                console.error(err);
+                codeErrorText.textContent = 'فشل الاتصال بالسيرفر';
+                codeError.style.display = 'flex';
+            } finally {
+                document.querySelectorAll('#codeGenerateView button, #codeResultView button').forEach(b => b.disabled = false);
+            }
+        }
+
+        document.getElementById('doGenerateCodeBtn').addEventListener('click', doGenerateCode);
+        document.getElementById('regenerateCodeBtn').addEventListener('click', doGenerateCode);
+
+        // ---------- طباعة بوليصة الشحن ----------
+        // بتطبع بوليصتين (نسخة تتلزّق على الشحنة + نسخة أرشيف) فيهم كل بيانات
+        // الشحنة المفيدة للتوصيل. مهم جدًا: مفيش أي مكان هنا بيطبع كود التتبع
+        // الأصلي ولا كود التسليم المؤقت - الكودين دول لازم يفضلوا سريين ومايتكتبوش
+        // على ورق ممكن يتفتح لأي حد أثناء رحلة الشحنة.
+        function escapeHtml(str) {
+            return (str || '').toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        async function openPrintWaybill(shipment) {
+            let details = { weight: '', shippingType: '', shippingRoute: '', notes: '', orderDate: '', governorate: shipment.governorate || '' };
+            try {
+                const res = await fetch(GOOGLE_SCRIPT_URL + '?action=orderDetails&token=' + encodeURIComponent(session.token) + '&code=' + encodeURIComponent(shipment.trackingCode));
+                const data = await res.json();
+                if (data.result === 'success') {
+                    details = {
+                        weight: data.weight || '',
+                        shippingType: data.shippingType || '',
+                        shippingRoute: data.shippingRoute || '',
+                        notes: data.notes || '',
+                        orderDate: data.orderDate || '',
+                        governorate: data.governorate || shipment.governorate || ''
+                    };
+                }
+            } catch (err) {
+                console.error(err);
+                // لو فشل جلب تفاصيل الطلب الإضافية (الوزن/نوع الشحن...)، نكمّل ونطبع
+                // بالبيانات الأساسية المتاحة أصلاً من غير ما نوقف الطباعة بالكامل
+            }
+
+            const dateLabel = details.orderDate ? new Date(details.orderDate).toLocaleDateString('ar-EG')
+                : (shipment.createdAt ? new Date(shipment.createdAt).toLocaleDateString('ar-EG') : '-');
+            const logoUrl = new URL('logo.png', window.location.href).href;
+            const holderName = (shipment.updatedBy || '').toString().replace(/\s*\(تأكيد العميل\)\s*$/, '');
+            const currentDestinationLabel = shipment.pendingToStatusLabel || shipment.nextStatusLabel || shipment.statusLabel || '-';
+
+            const buildLabel = (copyTag) => `
+                <div class="waybill">
+                    <div class="waybill-head">
+                        <img src="${logoUrl}" alt="MahWay">
+                        <div class="waybill-head-text">
+                            <h1>MahWay</h1>
+                            <span>بوليصة شحن</span>
+                        </div>
+                        <div class="waybill-copy-tag">${copyTag}</div>
+                    </div>
+                    <div class="waybill-row"><span>اسم العميل</span><b>${escapeHtml(shipment.customerName || '-')}</b></div>
+                    <div class="waybill-row"><span>رقم الهاتف</span><b>${escapeHtml(shipment.customerPhone || '-')}</b></div>
+                    <div class="waybill-row"><span>المحافظة</span><b>${escapeHtml(details.governorate || '-')}</b></div>
+                    <div class="waybill-row"><span>الوزن</span><b>${details.weight ? escapeHtml(details.weight.toString()) + ' كجم' : '-'}</b></div>
+                    <div class="waybill-row"><span>نوع الشحن</span><b>${escapeHtml(details.shippingType || '-')}</b></div>
+                    <div class="waybill-row"><span>مسار الشحن</span><b>${escapeHtml(details.shippingRoute || '-')}</b></div>
+                    <div class="waybill-row"><span>الوجهة الحالية</span><b>${escapeHtml(currentDestinationLabel)}</b></div>
+                    ${holderName ? `<div class="waybill-row"><span>المسؤول الحالي عن الشحنة</span><b>${escapeHtml(holderName)}</b></div>` : ''}
+                    <div class="waybill-row"><span>تاريخ الطلب</span><b>${dateLabel}</b></div>
+                    ${details.notes ? `<div class="waybill-notes"><span>ملاحظات</span><p>${escapeHtml(details.notes)}</p></div>` : ''}
+                    <div class="waybill-sign">
+                        <div><span>توقيع المُسلِّم</span><div class="sign-line"></div></div>
+                        <div><span>توقيع المُستلِم</span><div class="sign-line"></div></div>
+                    </div>
+                </div>`;
+
+            const win = window.open('', '_blank');
+            if (!win) {
+                showToast('المتصفح منع فتح نافذة الطباعة - اسمح بالنوافذ المنبثقة وحاول تاني', 'error');
+                return;
+            }
+
+            win.document.open();
+            win.document.write(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>بوليصة شحن - ${escapeHtml(shipment.customerName || '')}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Cairo', sans-serif; margin: 0; padding: 18px; color: #1f2937; background:#f3f4f6; }
+    .sheet { display: flex; flex-direction: column; gap: 16px; max-width: 480px; margin: 0 auto; }
+    .waybill { background:#fff; border: 2px solid #1f2937; border-radius: 10px; padding: 16px 18px; }
+    .waybill-head { display: flex; align-items: center; gap: 10px; border-bottom: 2px dashed #d1d5db; padding-bottom: 10px; margin-bottom: 10px; }
+    .waybill-head img { width: 46px; height: 46px; object-fit: contain; }
+    .waybill-head-text h1 { margin: 0; font-size: 1.2rem; color: #2563eb; }
+    .waybill-head-text span { font-size: 0.85rem; color: #6b7280; font-weight: 700; }
+    .waybill-copy-tag { margin-right: auto; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 999px; padding: 3px 12px; font-size: 0.72rem; font-weight: 700; color: #374151; white-space: nowrap; }
+    .waybill-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted #e5e7eb; font-size: 0.92rem; }
+    .waybill-row span { color: #6b7280; font-weight: 600; }
+    .waybill-row b { color: #111827; font-weight: 800; text-align: left; }
+    .waybill-notes { margin-top: 8px; font-size: 0.88rem; }
+    .waybill-notes span { color: #6b7280; font-weight: 700; display: block; margin-bottom: 3px; }
+    .waybill-notes p { margin: 0; color: #111827; }
+    .waybill-sign { display: flex; justify-content: space-between; gap: 20px; margin-top: 16px; }
+    .waybill-sign > div { flex: 1; text-align: center; }
+    .waybill-sign span { font-size: 0.78rem; color: #6b7280; font-weight: 700; }
+    .sign-line { margin-top: 24px; border-top: 1px solid #9ca3af; }
+    .print-toolbar { text-align: center; margin-bottom: 16px; max-width:480px; margin-inline:auto; }
+    .print-toolbar button { font-family: 'Cairo', sans-serif; font-weight: 700; padding: 10px 26px; border-radius: 8px; border: none; background: #2563eb; color: #fff; cursor: pointer; font-size: 0.95rem; }
+    @media print {
+        .print-toolbar { display: none; }
+        body { padding: 0; background:#fff; }
+        .sheet { max-width: none; gap: 10px; }
+        .waybill { break-inside: avoid; border-color:#000; }
+    }
+</style>
+</head>
+<body>
+    <div class="print-toolbar"><button onclick="window.print()">طباعة البوليصتين</button></div>
+    <div class="sheet">
+        ${buildLabel('نسخة 1 - تُلزَق على الشحنة')}
+        ${buildLabel('نسخة 2 - أرشيف')}
+    </div>
+</body>
+</html>`);
+            win.document.close();
+        }
+
+        codeConfirmView.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            codeError.style.display = 'none';
+            const code = document.getElementById('confirmCodeInput').value.trim();
+            if (!code) return;
+
+            const btn = document.getElementById('doConfirmCodeBtn');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ type: 'confirmHandoffCode', token: session.token, trackingCode: activeCodeTrackingCode, code: code })
+                });
+                const data = await res.json();
+
+                if (data.result === 'success') {
+                    codeModal.classList.remove('show');
+                    clearMyGeneratedCode(activeCodeTrackingCode);
+                    showToast('تم تأكيد الاستلام وتحديث حالة الشحنة', 'success');
+                    fetchShipments(false);
+                } else {
+                    codeErrorText.textContent = data.message || 'الكود غير صحيح';
+                    codeError.style.display = 'flex';
+                }
+            } catch (err) {
+                console.error(err);
+                codeErrorText.textContent = 'فشل الاتصال بالسيرفر';
+                codeError.style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // عداد شغال زي الساعة الرقمية - بيعدّ بالثواني من وقت الاستلام الفعلي وبيكبر
+        // لوحده لحد يوم/أسبوع لو الوقت طال. shipment.lastUpdate جاي من السيرفر كرقم
+        // (epoch ms) اتخزّن مباشرة وقت الاستلام - فمفيش أي احتمال يبدأ من رقم غلط
+        // بسبب فروق تايم زون؛ العداد هنا دايمًا بيحسب الفرق الحقيقي من نفس اللحظة.
+        function formatElapsedParts(dateISO) {
+            if (!dateISO) return null;
+            const totalSeconds = Math.max(0, Math.floor((Date.now() - new Date(dateISO).getTime()) / 1000));
+            const days = Math.floor(totalSeconds / 86400);
+            const hours = Math.floor((totalSeconds % 86400) / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            return { totalSeconds, days, hours, minutes, seconds };
+        }
+
+        // مستويات لونية بسيطة بتديك إحساس فوري وهو بيعدّ: أخضر لسه قريب، برتقالي
+        // طال شوية، أحمر طال كتير - العداد نفسه بيفضل شغال وبيتحدّث كل ثانية
+        function elapsedUrgencyClass(totalSeconds) {
+            if (totalSeconds < 15 * 60) return 'timer-fresh';
+            if (totalSeconds < 60 * 60) return 'timer-warning';
+            return 'timer-late';
+        }
+
+        function formatElapsed(dateISO) {
+            const p = formatElapsedParts(dateISO);
+            if (!p) return '-';
+            const pad = n => n.toString().padStart(2, '0');
+            if (p.days >= 7) {
+                const weeks = Math.floor(p.days / 7);
+                return weeks + ' أسبوع و ' + (p.days % 7) + ' يوم';
+            }
+            if (p.days >= 1) {
+                return p.days + ' يوم ' + pad(p.hours) + ':' + pad(p.minutes) + ':' + pad(p.seconds);
+            }
+            return pad(p.hours) + ':' + pad(p.minutes) + ':' + pad(p.seconds);
+        }
+
+        function renderElapsedDigits(dateISO) {
+            return formatElapsed(dateISO);
+        }
+
+        // بيحدّث محتوى عداد الكارت + بيلوّنه حسب مدة الانتظار، وبيخلي النقطة اللي
+        // جنبه نابضة عشان يبان إنه شغال فعليًا لحظة بلحظة (تفاعلي وديناميكي)
+        function updateHolderTimerEl(elId, dateISO) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            const p = formatElapsedParts(dateISO);
+            el.classList.remove('timer-fresh', 'timer-warning', 'timer-late');
+            if (p) el.classList.add(elapsedUrgencyClass(p.totalSeconds));
+            const digitsEl = el.querySelector('.holder-timer-digits');
+            if (digitsEl) digitsEl.textContent = formatElapsed(dateISO);
+        }
+
+        // ---------- تغيير كلمة المرور ----------
+        const cpModal = document.getElementById('changePasswordModal');
+        const cpForm = document.getElementById('changePasswordForm');
+        const cpError = document.getElementById('cpError');
+        const cpErrorText = document.getElementById('cpErrorText');
+
+        function openChangePasswordModal() {
+            cpForm.reset();
+            cpError.style.display = 'none';
+            cpModal.classList.add('show');
+        }
+        function closeChangePasswordModal() {
+            cpModal.classList.remove('show');
+        }
+
+        document.getElementById('changePasswordBtn').addEventListener('click', openChangePasswordModal);
+        document.getElementById('closeChangePasswordModal').addEventListener('click', closeChangePasswordModal);
+        document.getElementById('cancelChangePassword').addEventListener('click', closeChangePasswordModal);
+        cpModal.addEventListener('click', (e) => { if (e.target === cpModal) closeChangePasswordModal(); });
+
+        cpForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            cpError.style.display = 'none';
+
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPasswordCp').value;
+            const confirmPassword = document.getElementById('confirmPasswordCp').value;
+
+            if (newPassword !== confirmPassword) {
+                cpErrorText.textContent = 'كلمة المرور الجديدة وتأكيدها مش متطابقين';
+                cpError.style.display = 'flex';
+                return;
+            }
+            if (newPassword.length < 6) {
+                cpErrorText.textContent = 'كلمة المرور لازم تكون 6 أحرف على الأقل';
+                cpError.style.display = 'flex';
+                return;
+            }
+
+            const btn = document.getElementById('savePasswordBtn');
+            btn.disabled = true;
+
+            try {
+                const oldPasswordHash = await sha256(oldPassword);
+                const newPasswordHash = await sha256(newPassword);
+
+                const res = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        type: 'changePassword',
+                        token: session.token,
+                        oldPasswordHash: oldPasswordHash,
+                        newPasswordHash: newPasswordHash
+                    })
+                });
+                const data = await res.json();
+
+                if (data.result === 'success') {
+                    closeChangePasswordModal();
+                    showToast(data.message || 'تم تغيير كلمة المرور بنجاح', 'success');
+                } else {
+                    cpErrorText.textContent = data.message || 'حصل خطأ. حاول تاني.';
+                    cpError.style.display = 'flex';
+                }
+            } catch (err) {
+                console.error(err);
+                cpErrorText.textContent = 'حصل خطأ في الاتصال. تأكد من الإنترنت وحاول تاني.';
+                cpError.style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => fetchShipments(true));
+        document.getElementById('searchInput').addEventListener('input', renderShipments);
+
+        // تحديث تلقائي كل دقيقة
+        setInterval(() => fetchShipments(false), 60000);
+
+        session = loadSession();
+        if (session) {
+            document.getElementById('userNameLabel').textContent = session.name;
+            document.getElementById('userRoleLabel').textContent = session.roleLabel;
+            if ((session.roles || []).includes('receiver')) {
+                document.getElementById('searchInput').placeholder = 'ابحث باسم العميل أو رقم الهاتف...';
+                document.getElementById('tabWarehouseBtn').style.display = 'flex';
+            }
+            fetchShipments(false);
+        }
+    </script>
+</body>
+</html>
